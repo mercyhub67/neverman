@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Neverman x'dev</title>
+
+<style>
+
+body{
+margin:0;
+font-family:sans-serif;
+background:#0b0b0b;
+color:white;
+}
+
+.topbar{
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:15px;
+background:#111;
+font-size:18px;
+}
+
+.menu{
+font-size:22px;
+cursor:pointer;
+}
+
+.title{
+font-weight:bold;
+}
+
+.container{
+display:flex;
+justify-content:center;
+align-items:center;
+height:80vh;
+}
+
+.box{
+background:#141414;
+padding:40px;
+border-radius:15px;
+width:90%;
+max-width:400px;
+text-align:center;
+}
+
+.key{
+background:black;
+padding:15px;
+border-radius:8px;
+font-size:18px;
+margin:15px 0;
+letter-spacing:2px;
+}
+
+button{
+padding:12px 18px;
+border:none;
+border-radius:8px;
+margin:5px;
+font-size:15px;
+cursor:pointer;
+}
+
+.generate{
+background:#1fc65c;
+color:white;
+}
+
+.copy{
+background:#1fc65c;
+color:white;
+}
+
+.timer{
+margin:10px;
+opacity:0.7;
+}
+
+.discord{
+background:#1fc65c;
+padding:15px;
+text-align:center;
+font-size:16px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+<div class="menu">☰</div>
+<div class="title">Neverman x'dev</div>
+<div>⚙</div>
+</div>
+
+<div class="container">
+<div class="box">
+
+<h2>🔑 Key</h2>
+
+<div class="key" id="key">Press Generate</div>
+
+<div class="timer" id="time">Time left: 05:00:00</div>
+
+<button class="generate" onclick="generateKey()">Generate Key</button>
+
+<button class="copy" onclick="copyKey()">Copy Key</button>
+
+</div>
+</div>
+
+<div class="discord">
+💬 Discord — Neverman Community
+</div>
+
+<script>
+
+let keyValue=""
+let clicks=0
+let time=18000
+let timer
+
+function randomKey(){
+
+let chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+let result=""
+
+for(let i=0;i<16;i++){
+result+=chars.charAt(Math.floor(Math.random()*chars.length))
+}
+
+return result
+
+}
+
+function generateKey(){
+
+clicks++
+
+if(clicks < 10){
+
+document.getElementById("key").innerText =
+"Press "+clicks+"/10"
+
+return
+
+}
+
+if(clicks == 10){
+
+keyValue=randomKey()
+
+document.getElementById("key").innerText=keyValue
+
+time=18000
+
+clearInterval(timer)
+
+timer=setInterval(updateTime,1000)
+
+}
+
+}
+
+function updateTime(){
+
+if(time<=0){
+
+document.getElementById("time").innerText="Expired"
+
+clearInterval(timer)
+
+return
+
+}
+
+time--
+
+let h=Math.floor(time/3600)
+let m=Math.floor((time%3600)/60)
+let s=time%60
+
+h = h.toString().padStart(2,'0')
+m = m.toString().padStart(2,'0')
+s = s.toString().padStart(2,'0')
+
+document.getElementById("time").innerText =
+"Time left: "+h+":"+m+":"+s
+
+}
+
+function copyKey(){
+
+if(!keyValue){
+alert("Generate key first")
+return
+}
+
+navigator.clipboard.writeText(keyValue)
+
+alert("Copied: "+keyValue)
+
+}
+
+</script>
+
+</body>
+</html>
