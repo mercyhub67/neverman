@@ -96,21 +96,12 @@ btn.Draggable = true
 btn.AnchorPoint = Vector2.new(0.5,0.5)
 
 btn.MouseButton1Click:Connect(function()
-
-	local down = TweenService:Create(btn,TweenInfo.new(0.07),{
-		Size = UDim2.fromOffset(36,36)
-	})
-
-	local up = TweenService:Create(btn,TweenInfo.new(0.07),{
-		Size = UDim2.fromOffset(42,42)
-	})
-
+	local down = TweenService:Create(btn,TweenInfo.new(0.07),{Size = UDim2.fromOffset(36,36)})
+	local up = TweenService:Create(btn,TweenInfo.new(0.07),{Size = UDim2.fromOffset(42,42)})
 	down:Play()
 	down.Completed:Wait()
 	up:Play()
-
 	Window:Toggle()
-
 end)
 
 --// SERVICES & GLOBALS
@@ -135,9 +126,7 @@ local GunNames = {
 }
 
 local GunLookup = {}
-for _,v in pairs(GunNames) do
-GunLookup[v] = true
-end
+for _,v in pairs(GunNames) do GunLookup[v] = true end
 
 local fovCircle = Drawing.new("Circle")
 fovCircle.Color = Color3.fromRGB(255,255,255)
@@ -158,7 +147,7 @@ local VisualsTab = Window:Tab({Title = "Visuals", Icon = "eye"})
 local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
 
 --// COMBAT TAB
-local Section = CombatTab:Section({Title = "Silent Aim"})
+local Section = CombatTab:Section({Title = "Silent Aim (Advanced)"})
 
 CombatTab:Toggle({
 Title = "Enable Silent Aim",
@@ -172,72 +161,78 @@ end
 CombatTab:Slider({
 Title = "FOV",
 Step = 1,
-Value = {
-Min = 50,
-Max = 800,
-Default = FOV
-},
+Value = {Min = 50, Max = 800, Default = FOV},
 Callback = function(v)
 	FOV = v
-	if fovCircle then
-		fovCircle.Radius = v
-	end
+	if fovCircle then fovCircle.Radius = v end
 end
 })
 
 local function GetClosestTarget()
-local closest
-local shortest = math.huge
-local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-for _,player in pairs(Players:GetPlayers()) do
-if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-local head = player.Character.Head
-local pos,onScreen = Camera:WorldToViewportPoint(head.Position)
-if onScreen then
-local dist = (Vector2.new(pos.X,pos.Y) - center).Magnitude
-if dist < FOV and dist < shortest then
-shortest = dist
-closest = player
-end
-end
-end
-end
-return closest
+    local closest
+    local shortest = math.huge
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    for _,player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            local pos,onScreen = Camera:WorldToViewportPoint(head.Position)
+            if onScreen then
+                local dist = (Vector2.new(pos.X,pos.Y) - center).Magnitude
+                if dist < FOV and dist < shortest then
+                    shortest = dist
+                    closest = player
+                end
+            end
+        end
+    end
+    return closest
 end
 
+--// NEW: รองรับการทำนายตำแหน่งรถและการเคลื่อนที่
 local function PredictPosition(targetPart)
-    local root = targetPart.Parent:FindFirstChild("HumanoidRootPart")
+    local char = targetPart.Parent
+    local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return targetPart.Position end
+
     local velocity = root.AssemblyLinearVelocity
-    if velocity.Magnitude > 75 or math.abs(velocity.Y) > 30 then return targetPart.Position end
-    local seat = root:FindFirstChildWhichIsA("WeldConstraint") or root:FindFirstChildWhichIsA("Weld")
-    if seat and seat.Part0 then return targetPart.Position + (seat.Part0.AssemblyLinearVelocity * PREDICTION_FACTOR * 1.1) end
+    
+    -- เช็คว่านั่งในรถหรือไม่ (ถ้ามี SeatWeld แสดงว่านั่งอยู่)
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.SeatPart then
+        -- ถ้าอยู่บนรถ ใช้ความเร็วของรถทั้งหมดในการทำนาย
+        velocity = humanoid.SeatPart.AssemblyLinearVelocity
+        return targetPart.Position + (velocity * PREDICTION_FACTOR * 1.05)
+    end
+
+    -- กรองความเร็วที่ผิดปกติ (เช่น วาร์ป หรือตกแมพ)
+    if velocity.Magnitude > 150 then return targetPart.Position end
+
     return targetPart.Position + (velocity * PREDICTION_FACTOR)
 end
 
 local function IsHoldingAllowedGun(args)
-local ok,weapon = pcall(function() return args[3] end)
-if ok and typeof(weapon) == "Instance" and GunLookup[weapon.Name] then return true end
-if LocalPlayer.Character then
-for _,v in pairs(LocalPlayer.Character:GetChildren()) do if v:IsA("Tool") and GunLookup[v.Name] then return true end end
-end
-return false
+    local ok,weapon = pcall(function() return args[3] end)
+    if ok and typeof(weapon) == "Instance" and GunLookup[weapon.Name] then return true end
+    if LocalPlayer.Character then
+        for _,v in pairs(LocalPlayer.Character:GetChildren()) do if v:IsA("Tool") and GunLookup[v.Name] then return true end end
+    end
+    return false
 end
 
 local send = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Send")
 local oldFire
 oldFire = hookfunction(send.FireServer,function(self,...)
-local args = {...}
-if SilentAimEnabled and IsHoldingAllowedGun(args) then
-local target = GetClosestTarget()
-if target and target.Character and target.Character:FindFirstChild("Head") then
-local head = target.Character.Head
-local aimPos = PredictPosition(head)
-args[4] = CFrame.new(1/0,1/0,1/0)
-args[5] = {[1] = {[1] = {["Instance"] = head, ["Position"] = aimPos}}}
-end
-end
-return oldFire(self,unpack(args))
+    local args = {...}
+    if SilentAimEnabled and IsHoldingAllowedGun(args) then
+        local target = GetClosestTarget()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local head = target.Character.Head
+            local aimPos = PredictPosition(head)
+            args[4] = CFrame.new(1/0,1/0,1/0)
+            args[5] = {[1] = {[1] = {["Instance"] = head, ["Position"] = aimPos}}}
+        end
+    end
+    return oldFire(self,unpack(args))
 end)
 
 --// ITEM ESP LOGIC
@@ -479,7 +474,6 @@ PlayerTab:Slider({
 
 --// FINAL UPDATE LOOP
 RunService.RenderStepped:Connect(function()
-    --// FOV & Silent Aim Tracers
 	local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 	fovCircle.Position = center; fovCircle.Radius = FOV
 	if SilentAimEnabled then
@@ -492,7 +486,6 @@ RunService.RenderStepped:Connect(function()
 		else tracerLine.Visible = false end
 	else tracerLine.Visible = false end
 
-    --// Player ESP Logic
 	local myChar = LocalPlayer.Character
 	if myChar and myChar:FindFirstChild("HumanoidRootPart") then
 		local myRoot = myChar.HumanoidRootPart
