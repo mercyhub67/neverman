@@ -1,6 +1,7 @@
 --// CONFIG
 local SilentAimEnabled = true
 local FOV = 150
+getgenv().AntiAimbot = false
 
 --// Intro Animation
 local TweenService = game:GetService("TweenService")
@@ -96,8 +97,12 @@ btn.Draggable = true
 btn.AnchorPoint = Vector2.new(0.5,0.5)
 
 btn.MouseButton1Click:Connect(function()
-	local down = TweenService:Create(btn,TweenInfo.new(0.07),{Size = UDim2.fromOffset(36,36)})
-	local up = TweenService:Create(btn,TweenInfo.new(0.07),{Size = UDim2.fromOffset(42,42)})
+	local down = TweenService:Create(btn,TweenInfo.new(0.07),{
+		Size = UDim2.fromOffset(36,36)
+	})
+	local up = TweenService:Create(btn,TweenInfo.new(0.07),{
+		Size = UDim2.fromOffset(42,42)
+	})
 	down:Play()
 	down.Completed:Wait()
 	up:Play()
@@ -112,7 +117,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local PREDICTION_FACTOR = 0.165
+local PREDICTION_FACTOR = 0.165 -- ปรับความคม (0.13 - 0.17 ตามปิง)
 
 --// SPEED WARP SETTINGS
 local SpeedWarpEnabled = false
@@ -126,18 +131,21 @@ local GunNames = {
 }
 
 local GunLookup = {}
-for _,v in pairs(GunNames) do GunLookup[v] = true end
+for _,v in pairs(GunNames) do
+GunLookup[v] = true
+end
 
+-- // DRAWING (วงเส้นคมๆ จากโค้ดใหม่)
 local fovCircle = Drawing.new("Circle")
-fovCircle.Color = Color3.fromRGB(255,255,255)
-fovCircle.Thickness = 1
-fovCircle.NumSides = 100
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Thickness = 1 -- เส้นบางคม
+fovCircle.NumSides = 100 -- กลมเกลี้ยง
 fovCircle.Radius = FOV
 fovCircle.Filled = false
 fovCircle.Visible = true
 
 local tracerLine = Drawing.new("Line")
-tracerLine.Color = Color3.fromRGB(255,0,0)
+tracerLine.Color = Color3.fromRGB(255, 0, 0)
 tracerLine.Thickness = 1
 tracerLine.Visible = false
 
@@ -147,7 +155,7 @@ local VisualsTab = Window:Tab({Title = "Visuals", Icon = "eye"})
 local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
 
 --// COMBAT TAB
-local Section = CombatTab:Section({Title = "Silent Aim (Advanced)"})
+local Section = CombatTab:Section({Title = "Silent Aim"})
 
 CombatTab:Toggle({
 Title = "Enable Silent Aim",
@@ -161,23 +169,41 @@ end
 CombatTab:Slider({
 Title = "FOV",
 Step = 1,
-Value = {Min = 50, Max = 800, Default = FOV},
+Value = {
+Min = 50,
+Max = 800,
+Default = FOV
+},
 Callback = function(v)
 	FOV = v
-	if fovCircle then fovCircle.Radius = v end
+	if fovCircle then
+		fovCircle.Radius = v
+	end
 end
 })
 
+--// ANTI-AIMBOT SECTION
+local AntiAimSection = CombatTab:Section({Title = "Anti Aimbot"})
+
+CombatTab:Toggle({
+Title = "Enable Anti-Aimbot (Desync)",
+Default = false,
+Callback = function(v)
+    getgenv().AntiAimbot = v
+end
+})
+
+-- // FUNCTIONS (จากโค้ดใหม่)
 local function GetClosestTarget()
-    local closest
-    local shortest = math.huge
+    local closest, shortest = nil, math.huge
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    for _,player in pairs(Players:GetPlayers()) do
+
+    for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
             local head = player.Character.Head
-            local pos,onScreen = Camera:WorldToViewportPoint(head.Position)
+            local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
             if onScreen then
-                local dist = (Vector2.new(pos.X,pos.Y) - center).Magnitude
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
                 if dist < FOV and dist < shortest then
                     shortest = dist
                     closest = player
@@ -188,51 +214,62 @@ local function GetClosestTarget()
     return closest
 end
 
---// NEW: รองรับการทำนายตำแหน่งรถและการเคลื่อนที่
 local function PredictPosition(targetPart)
-    local char = targetPart.Parent
-    local root = char:FindFirstChild("HumanoidRootPart")
+    local root = targetPart.Parent:FindFirstChild("HumanoidRootPart")
     if not root then return targetPart.Position end
 
     local velocity = root.AssemblyLinearVelocity
     
-    -- เช็คว่านั่งในรถหรือไม่ (ถ้ามี SeatWeld แสดงว่านั่งอยู่)
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid and humanoid.SeatPart then
-        -- ถ้าอยู่บนรถ ใช้ความเร็วของรถทั้งหมดในการทำนาย
-        velocity = humanoid.SeatPart.AssemblyLinearVelocity
-        return targetPart.Position + (velocity * PREDICTION_FACTOR * 1.05)
+    -- [จาก 1] แก้ทาง Anti Aim (ถ้า Velocity สูงผิดปกติ ให้ยิงตำแหน่งจริง)
+    if velocity.Magnitude > 75 or math.abs(velocity.Y) > 30 then
+        return targetPart.Position 
     end
 
-    -- กรองความเร็วที่ผิดปกติ (เช่น วาร์ป หรือตกแมพ)
-    if velocity.Magnitude > 150 then return targetPart.Position end
+    -- [จาก 2] แก้ทางพวกนั่งรถ/ยานพาหนะ
+    local seat = root:FindFirstChildWhichIsA("WeldConstraint") or root:FindFirstChildWhichIsA("Weld")
+    if seat and seat.Part0 then
+        return targetPart.Position + (seat.Part0.AssemblyLinearVelocity * PREDICTION_FACTOR * 1.1)
+    end
 
     return targetPart.Position + (velocity * PREDICTION_FACTOR)
 end
 
 local function IsHoldingAllowedGun(args)
-    local ok,weapon = pcall(function() return args[3] end)
-    if ok and typeof(weapon) == "Instance" and GunLookup[weapon.Name] then return true end
+    local ok, weapon = pcall(function() return args[3] end)
+    if not ok then return false end
+    if typeof(weapon) == "Instance" and GunLookup[weapon.Name] then return true end
     if LocalPlayer.Character then
-        for _,v in pairs(LocalPlayer.Character:GetChildren()) do if v:IsA("Tool") and GunLookup[v.Name] then return true end end
+        for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+            if child:IsA("Tool") and GunLookup[child.Name] then return true end
+        end
     end
     return false
 end
 
+-- // HOOKING (Silent Aim Core จากโค้ดใหม่)
 local send = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Send")
 local oldFire
-oldFire = hookfunction(send.FireServer,function(self,...)
+oldFire = hookfunction(send.FireServer, function(self, ...)
     local args = {...}
     if SilentAimEnabled and IsHoldingAllowedGun(args) then
         local target = GetClosestTarget()
         if target and target.Character and target.Character:FindFirstChild("Head") then
-            local head = target.Character.Head
-            local aimPos = PredictPosition(head)
-            args[4] = CFrame.new(1/0,1/0,1/0)
-            args[5] = {[1] = {[1] = {["Instance"] = head, ["Position"] = aimPos}}}
+            local hitPart = target.Character.Head
+            local aimPos = PredictPosition(hitPart)
+            
+            -- [ผสม] ส่งตำแหน่งแม่นยำ + ค่า Inf เพื่อเลี่ยงการตรวจจับระยะ
+            args[4] = CFrame.new(1/0, 1/0, 1/0) 
+            args[5] = {
+                [1] = {
+                    [1] = {
+                        ["Instance"] = hitPart,
+                        ["Position"] = aimPos
+                    }
+                }
+            }
         end
     end
-    return oldFire(self,unpack(args))
+    return oldFire(self, unpack(args))
 end)
 
 --// ITEM ESP LOGIC
@@ -472,20 +509,29 @@ PlayerTab:Slider({
     end
 })
 
---// FINAL UPDATE LOOP
+-- // RENDER LOOP (รวมระบบ FOV & Tracer จากโค้ดใหม่)
 RunService.RenderStepped:Connect(function()
-	local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-	fovCircle.Position = center; fovCircle.Radius = FOV
-	if SilentAimEnabled then
-		local target = GetClosestTarget()
-		if target and target.Character and target.Character:FindFirstChild("Head") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
-			local pred = PredictPosition(target.Character.Head)
-			local pos,onScreen = Camera:WorldToViewportPoint(pred)
-			local ourPos,ourOnScreen = Camera:WorldToViewportPoint(LocalPlayer.Character.Head.Position)
-			if onScreen and ourOnScreen then tracerLine.From = Vector2.new(ourPos.X, ourPos.Y); tracerLine.To = Vector2.new(pos.X,pos.Y); tracerLine.Visible = true else tracerLine.Visible = false end
-		else tracerLine.Visible = false end
-	else tracerLine.Visible = false end
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    fovCircle.Position = center
+    
+    local target = GetClosestTarget()
+    if target and target.Character and target.Character:FindFirstChild("Head") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+        local predPos = PredictPosition(target.Character.Head)
+        local tPos, onScreen = Camera:WorldToViewportPoint(predPos)
+        local sPos, ourOnScreen = Camera:WorldToViewportPoint(LocalPlayer.Character.Head.Position)
 
+        if onScreen and ourOnScreen then
+            tracerLine.From = Vector2.new(sPos.X, sPos.Y)
+            tracerLine.To = Vector2.new(tPos.X, tPos.Y)
+            tracerLine.Visible = (SilentAimEnabled and true or false)
+        else
+            tracerLine.Visible = false
+        end
+    else
+        tracerLine.Visible = false
+    end
+
+    --// Player ESP Logic (บรรทัดเดิม)
 	local myChar = LocalPlayer.Character
 	if myChar and myChar:FindFirstChild("HumanoidRootPart") then
 		local myRoot = myChar.HumanoidRootPart
@@ -525,6 +571,28 @@ RunService.Heartbeat:Connect(function()
                     lastWarp = tick()
                 end
             end
+        end
+    end
+end)
+
+--// ANTI-AIMBOT HEARTBEAT (ส่วนเดิม)
+RunService.Heartbeat:Connect(function()
+    if getgenv().AntiAimbot and LocalPlayer.Character then
+        local RootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if RootPart and Humanoid and Humanoid.Health > 0 then 
+            local OldVec = RootPart.Velocity
+            local LineraVelcoity = RootPart.AssemblyLinearVelocity
+            local Angular = RootPart.AssemblyAngularVelocity
+            local x,y,z = math.random(1000,2500),math.random(1000,2500),math.random(1000,2500)
+            local LandVec = Vector3.new(RootPart.AssemblyLinearVelocity.X * x, RootPart.AssemblyLinearVelocity.Y * y, RootPart.AssemblyLinearVelocity.Z * z)
+            RootPart.Velocity = LandVec
+            RootPart.AssemblyLinearVelocity = LandVec
+            RootPart.AssemblyAngularVelocity = LandVec
+            RunService.RenderStepped:Wait()
+            RootPart.Velocity = OldVec
+            RootPart.AssemblyLinearVelocity = LineraVelcoity
+            RootPart.AssemblyAngularVelocity = Angular
         end
     end
 end)
