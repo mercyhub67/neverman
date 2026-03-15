@@ -186,7 +186,7 @@ end
 local AntiAimSection = CombatTab:Section({Title = "Anti Aimbot"})
 
 CombatTab:Toggle({
-Title = "Enable Anti-Aimbot (Desync)",
+Title = "Anti Aim",
 Default = false,
 Callback = function(v)
     getgenv().AntiAimbot = v
