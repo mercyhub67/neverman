@@ -575,24 +575,57 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
---// ANTI-AIMBOT HEARTBEAT (ส่วนเดิม)
+--// ANTI-AIMBOT HEARTBEAT (Resolver Break Version)
+
 RunService.Heartbeat:Connect(function()
-    if getgenv().AntiAimbot and LocalPlayer.Character then
-        local RootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if RootPart and Humanoid and Humanoid.Health > 0 then 
-            local OldVec = RootPart.Velocity
-            local LineraVelcoity = RootPart.AssemblyLinearVelocity
-            local Angular = RootPart.AssemblyAngularVelocity
-            local x,y,z = math.random(1000,2500),math.random(1000,2500),math.random(1000,2500)
-            local LandVec = Vector3.new(RootPart.AssemblyLinearVelocity.X * x, RootPart.AssemblyLinearVelocity.Y * y, RootPart.AssemblyLinearVelocity.Z * z)
-            RootPart.Velocity = LandVec
-            RootPart.AssemblyLinearVelocity = LandVec
-            RootPart.AssemblyAngularVelocity = LandVec
-            RunService.RenderStepped:Wait()
-            RootPart.Velocity = OldVec
-            RootPart.AssemblyLinearVelocity = LineraVelcoity
-            RootPart.AssemblyAngularVelocity = Angular
-        end
+
+    if not getgenv().AntiAimbot then return end
+    if not LocalPlayer.Character then return end
+
+    local RootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+    if not RootPart or not Humanoid or Humanoid.Health <= 0 then return end
+
+    -- บางเฟรมไม่ spoof (กัน resolver จับ pattern)
+    if math.random(1,4) == 2 then
+        return
     end
+
+    local OldVec = RootPart.Velocity
+    local LinearVelocity = RootPart.AssemblyLinearVelocity
+    local Angular = RootPart.AssemblyAngularVelocity
+
+    -- random power
+    local power = math.random(1500,3500)
+
+    -- random direction
+    local x = math.random(-power,power)
+    local y = math.random(-power,power)
+    local z = math.random(-power,power)
+
+    local LandVec = Vector3.new(
+        LinearVelocity.X * x,
+        LinearVelocity.Y * y,
+        LinearVelocity.Z * z
+    )
+
+    -- spoof velocity
+    RootPart.Velocity = LandVec
+    RootPart.AssemblyLinearVelocity = LandVec
+
+    -- spoof angular
+    RootPart.AssemblyAngularVelocity = Vector3.new(
+        math.random(-2500,2500),
+        math.random(-2500,2500),
+        math.random(-2500,2500)
+    )
+
+    RunService.RenderStepped:Wait()
+
+    -- revert
+    RootPart.Velocity = OldVec
+    RootPart.AssemblyLinearVelocity = LinearVelocity
+    RootPart.AssemblyAngularVelocity = Angular
+
 end)
