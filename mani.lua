@@ -117,7 +117,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local PREDICTION_FACTOR = 0.165 -- ปรับความคม (0.13 - 0.17 ตามปิง)
+local PREDICTION_FACTOR = 0.165 
 
 --// SPEED WARP SETTINGS
 local SpeedWarpEnabled = false
@@ -131,15 +131,13 @@ local GunNames = {
 }
 
 local GunLookup = {}
-for _,v in pairs(GunNames) do
-GunLookup[v] = true
-end
+for _,v in pairs(GunNames) do GunLookup[v] = true end
 
--- // DRAWING (วงเส้นคมๆ จากโค้ดใหม่)
+-- // DRAWING
 local fovCircle = Drawing.new("Circle")
 fovCircle.Color = Color3.fromRGB(255, 255, 255)
-fovCircle.Thickness = 1 -- เส้นบางคม
-fovCircle.NumSides = 100 -- กลมเกลี้ยง
+fovCircle.Thickness = 1
+fovCircle.NumSides = 100
 fovCircle.Radius = FOV
 fovCircle.Filled = false
 fovCircle.Visible = true
@@ -169,16 +167,10 @@ end
 CombatTab:Slider({
 Title = "FOV",
 Step = 1,
-Value = {
-Min = 50,
-Max = 800,
-Default = FOV
-},
+Value = {Min = 50, Max = 800, Default = FOV},
 Callback = function(v)
 	FOV = v
-	if fovCircle then
-		fovCircle.Radius = v
-	end
+	if fovCircle then fovCircle.Radius = v end
 end
 })
 
@@ -188,12 +180,10 @@ local AntiAimSection = CombatTab:Section({Title = "Anti Aimbot"})
 CombatTab:Toggle({
 Title = "Anti Aim",
 Default = false,
-Callback = function(v)
-    getgenv().AntiAimbot = v
-end
+Callback = function(v) getgenv().AntiAimbot = v end
 })
 
--- // FUNCTIONS (จากโค้ดใหม่)
+-- // FUNCTIONS (Improved Vehicle Support)
 local function GetClosestTarget()
     local closest, shortest = nil, math.huge
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
@@ -215,23 +205,33 @@ local function GetClosestTarget()
 end
 
 local function PredictPosition(targetPart)
-    local root = targetPart.Parent:FindFirstChild("HumanoidRootPart")
+    local char = targetPart.Parent
+    local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return targetPart.Position end
 
-    local velocity = root.AssemblyLinearVelocity
+    local currentVelocity = root.AssemblyLinearVelocity
     
-    -- [จาก 1] แก้ทาง Anti Aim (ถ้า Velocity สูงผิดปกติ ให้ยิงตำแหน่งจริง)
-    if velocity.Magnitude > 75 or math.abs(velocity.Y) > 30 then
-        return targetPart.Position 
+    -- Check if player is in vehicle
+    local vehicleVelocity = Vector3.new(0,0,0)
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("Weld") or part:IsA("WeldConstraint") then
+            if part.Part0 and not part.Part0:IsDescendantOf(char) then
+                vehicleVelocity = part.Part0.AssemblyLinearVelocity
+                break
+            elseif part.Part1 and not part.Part1:IsDescendantOf(char) then
+                vehicleVelocity = part.Part1.AssemblyLinearVelocity
+                break
+            end
+        end
     end
 
-    -- [จาก 2] แก้ทางพวกนั่งรถ/ยานพาหนะ
-    local seat = root:FindFirstChildWhichIsA("WeldConstraint") or root:FindFirstChildWhichIsA("Weld")
-    if seat and seat.Part0 then
-        return targetPart.Position + (seat.Part0.AssemblyLinearVelocity * PREDICTION_FACTOR * 1.1)
-    end
+    -- Use vehicle velocity if it's significant, otherwise use player velocity
+    local finalVelocity = (vehicleVelocity.Magnitude > currentVelocity.Magnitude) and vehicleVelocity or currentVelocity
 
-    return targetPart.Position + (velocity * PREDICTION_FACTOR)
+    -- Anti-Exploit Velocity Filter
+    if finalVelocity.Magnitude > 150 then return targetPart.Position end
+
+    return targetPart.Position + (finalVelocity * PREDICTION_FACTOR)
 end
 
 local function IsHoldingAllowedGun(args)
@@ -246,7 +246,7 @@ local function IsHoldingAllowedGun(args)
     return false
 end
 
--- // HOOKING (Silent Aim Core จากโค้ดใหม่)
+-- // HOOKING
 local send = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Send")
 local oldFire
 oldFire = hookfunction(send.FireServer, function(self, ...)
@@ -257,7 +257,6 @@ oldFire = hookfunction(send.FireServer, function(self, ...)
             local hitPart = target.Character.Head
             local aimPos = PredictPosition(hitPart)
             
-            -- [ผสม] ส่งตำแหน่งแม่นยำ + ค่า Inf เพื่อเลี่ยงการตรวจจับระยะ
             args[4] = CFrame.new(1/0, 1/0, 1/0) 
             args[5] = {
                 [1] = {
@@ -509,7 +508,7 @@ PlayerTab:Slider({
     end
 })
 
--- // RENDER LOOP (รวมระบบ FOV & Tracer จากโค้ดใหม่)
+-- // RENDER LOOP
 RunService.RenderStepped:Connect(function()
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
     fovCircle.Position = center
@@ -523,7 +522,7 @@ RunService.RenderStepped:Connect(function()
         if onScreen and ourOnScreen then
             tracerLine.From = Vector2.new(sPos.X, sPos.Y)
             tracerLine.To = Vector2.new(tPos.X, tPos.Y)
-            tracerLine.Visible = (SilentAimEnabled and true or false)
+            tracerLine.Visible = SilentAimEnabled
         else
             tracerLine.Visible = false
         end
@@ -531,7 +530,6 @@ RunService.RenderStepped:Connect(function()
         tracerLine.Visible = false
     end
 
-    --// Player ESP Logic (บรรทัดเดิม)
 	local myChar = LocalPlayer.Character
 	if myChar and myChar:FindFirstChild("HumanoidRootPart") then
 		local myRoot = myChar.HumanoidRootPart
@@ -575,7 +573,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
---// ANTI-AIMBOT HEARTBEAT (ส่วนเดิม)
+--// ANTI-AIMBOT HEARTBEAT
 RunService.Heartbeat:Connect(function()
 if getgenv().AntiAimbot and LocalPlayer.Character then
 local RootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -615,7 +613,7 @@ PlayerTab:Toggle({
             repeat task.wait() until getgenv().Bypassed
 
             RunService.Heartbeat:Connect(function()
-                Net.send("set_sprinting_1",true)
+                if getgenv().InfiniteStamina then Net.send("set_sprinting_1",true) end
             end)
 
             local consume_stamina = SprintModule.consume_stamina
@@ -624,9 +622,7 @@ PlayerTab:Toggle({
 
             SprintBar.update = function(...)
                 if getgenv().InfiniteStamina then
-                    return __InfiniteStamina(function()
-                        return 0.5
-                    end)
+                    return __InfiniteStamina(function() return 0.5 end)
                 end
                 return __InfiniteStamina(...)
             end
