@@ -596,17 +596,3 @@ RunService.Heartbeat:Connect(function()
         end
     end
 end)
-
-_G.InfiniteStamina = true
-local    SprintModule = require(game:GetService('ReplicatedStorage').Modules.Game.Sprint)
-local    consume_stamina = SprintModule.consume_stamina
-     local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
-        local __InfiniteStamina = SprintBar.update
-    SprintBar.update = function(...)
-        if _G.InfiniteStamina then
-            return __InfiniteStamina(function()
-                return 0.5
-            end)
-        end
-        return __InfiniteStamina(...)
-end
