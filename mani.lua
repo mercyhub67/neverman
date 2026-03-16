@@ -596,3 +596,44 @@ RootPart.AssemblyAngularVelocity = Angular
 end
 end
 end)
+
+local Net = require(ReplicatedStorage.Modules.Core.Net)
+local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+
+PlayerTab:Toggle({
+    Title = "Infinite Stamina",
+    Default = false,
+    Callback = function(v)
+        if v then
+            if not getgenv().Bypassed then
+                local func = debug.getupvalue(Net.get,2)
+                debug.setconstant(func,3,'__Bypass')
+                debug.setconstant(func,4,'__Bypass')
+                getgenv().Bypassed = true
+            end
+            
+            repeat task.wait() until getgenv().Bypassed
+
+            RunService.Heartbeat:Connect(function()
+                Net.send("set_sprinting_1",true)
+            end)
+
+            local consume_stamina = SprintModule.consume_stamina
+            local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
+            local __InfiniteStamina = SprintBar.update
+
+            SprintBar.update = function(...)
+                if getgenv().InfiniteStamina then
+                    return __InfiniteStamina(function()
+                        return 0.5
+                    end)
+                end
+                return __InfiniteStamina(...)
+            end
+            
+            getgenv().InfiniteStamina = true
+        else
+            getgenv().InfiniteStamina = false
+        end
+    end
+})
