@@ -587,7 +587,6 @@ RunService.Heartbeat:Connect(function()
         local oldVel = Root.Velocity
         local oldLin = Root.AssemblyLinearVelocity
         local oldAng = Root.AssemblyAngularVelocity
-        local camCF = Camera.CFrame
         
         local mult = math.random(1500,3000)
         local fakeVel = oldLin * mult
@@ -596,20 +595,11 @@ RunService.Heartbeat:Connect(function()
         Root.AssemblyLinearVelocity = fakeVel
         Root.AssemblyAngularVelocity = fakeVel
 
-        Root.CFrame = Root.CFrame + Vector3.new(
-            math.random(-3,3),
-            math.random(-2,2),
-            math.random(-3,3)
-        )
-
         RunService.RenderStepped:Wait()
 
         Root.Velocity = oldVel
         Root.AssemblyLinearVelocity = oldLin
         Root.AssemblyAngularVelocity = oldAng
-        
-        -- คืนค่ากล้อง
-        Camera.CFrame = camCF
     end
 end)
 
