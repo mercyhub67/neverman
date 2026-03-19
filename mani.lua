@@ -595,6 +595,13 @@ RunService.Heartbeat:Connect(function()
         Root.AssemblyLinearVelocity = fakeVel
         Root.AssemblyAngularVelocity = fakeVel
 
+        -- offset เล็ก ๆ ไม่ทำให้กล้องสั่น
+        Root.CFrame = Root.CFrame + Vector3.new(
+            math.random(-1,1),
+            0,
+            math.random(-1,1)
+        )
+
         RunService.RenderStepped:Wait()
 
         Root.Velocity = oldVel
