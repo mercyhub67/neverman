@@ -422,7 +422,7 @@ local function createBillboardForPlayer(player)
 end
 
 --// PLAYER ESP CONFIG
-local ESP_Config = {Master = true, ShowName = true, ShowHealth = true, ShowDistance = true}
+local ESP_Config = {Master = false, ShowName = false, ShowHealth = false, ShowDistance = false}
 local ESP = {}
 
 VisualsTab:Toggle({
