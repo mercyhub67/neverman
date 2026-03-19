@@ -140,7 +140,7 @@ fovCircle.Thickness = 1
 fovCircle.NumSides = 100
 fovCircle.Radius = FOV
 fovCircle.Filled = false
-fovCircle.Visible = true
+fovCircle.Visible = false
 
 local tracerLine = Drawing.new("Line")
 tracerLine.Color = Color3.fromRGB(255, 0, 0)
@@ -273,7 +273,7 @@ end)
 
 --// ITEM ESP LOGIC
 local ContentProvider = game:GetService("ContentProvider")
-local ItemESP_Enabled = true
+local ItemESP_Enabled = false
 local BillboardCache = {}
 local ItemESP_UpdateConnections = {}
 local WeaponDB = {}
@@ -576,21 +576,30 @@ end)
 --// ANTI-AIMBOT HEARTBEAT
 RunService.Heartbeat:Connect(function()
     if getgenv().AntiAimbot and LocalPlayer.Character then
-        local RootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if RootPart and Humanoid and Humanoid.Health > 0 then
-            local OldVec = RootPart.Velocity
-            local LineraVelcoity = RootPart.AssemblyLinearVelocity
-            local Angular = RootPart.AssemblyAngularVelocity
+        local Root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local Hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if Root and Hum and Hum.Health > 0 then
+            local OldV, OldAV, OldLV = Root.Velocity, Root.AssemblyAngularVelocity, Root.AssemblyLinearVelocity
+            local OldCF = Root.CFrame
+            
             local x, y, z = math.random(2000, 4500), math.random(5000, 7500), math.random(5000, 7500)
-            local LandVec = Vector3.new(LineraVelcoity.X * x, LineraVelcoity.Y * y, LineraVelcoity.Z * z)
-            RootPart.Velocity = LandVec
-            RootPart.AssemblyLinearVelocity = LandVec
-            RootPart.AssemblyAngularVelocity = LandVec
+            local NewV = Vector3.new(OldLV.X * x, OldLV.Y * y, OldLV.Z * z)
+            
+            -- เสียบระบบ Jitter + Fake Lag (สุ่มทั้งมุมเอียงและตำแหน่งเยื้องเล็กน้อย)
+            local JitterCF = OldCF * CFrame.Angles(0, math.rad(math.random(-180, 180)), 0)
+            local OffsetCF = JitterCF + Vector3.new(math.random(-1, 1), 0, math.random(-1, 1))
+            
+            Root.Velocity = NewV
+            Root.AssemblyLinearVelocity = NewV
+            Root.AssemblyAngularVelocity = NewV
+            Root.CFrame = OffsetCF
+            
             RunService.RenderStepped:Wait()
-            RootPart.Velocity = OldVec
-            RootPart.AssemblyLinearVelocity = LineraVelcoity
-            RootPart.AssemblyAngularVelocity = Angular
+            
+            Root.Velocity = OldV
+            Root.AssemblyLinearVelocity = OldLV
+            Root.AssemblyAngularVelocity = OldAV
+            Root.CFrame = OldCF
         end
     end
 end)
