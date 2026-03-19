@@ -575,19 +575,46 @@ end)
 
 --// ANTI-AIMBOT HEARTBEAT
 RunService.Heartbeat:Connect(function()
-    if getgenv().AntiAimbot and RootPart and Humanoid.Health > 0 then 
-        local OldVec = RootPart.Velocity
-        local LineraVelcoity = RootPart.AssemblyLinearVelocity
-        local Angular = RootPart.AssemblyAngularVelocity
-        local x,y,z = math.random(1000,2500),math.random(1000,2500),math.random(1000,2500)
-        local LandVec = Vector3.new(RootPart.AssemblyLinearVelocity.X * x, RootPart.AssemblyLinearVelocity.Y * y, RootPart.AssemblyLinearVelocity.Z * z)
-        RootPart.Velocity = LandVec
-        RootPart.AssemblyLinearVelocity = LandVec
-        RootPart.AssemblyAngularVelocity = LandVec
+
+    if not getgenv().AntiAimbot then return end
+    if not LocalPlayer.Character then return end
+
+    local Root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+    if Root and Humanoid and Humanoid.Health > 0 then
+        
+        local oldVel = Root.Velocity
+        local oldLin = Root.AssemblyLinearVelocity
+        local oldAng = Root.AssemblyAngularVelocity
+        
+        -- Velocity Spike
+        local mult = math.random(1500,3000)
+        local fakeVel = oldLin * mult
+        
+        Root.Velocity = fakeVel
+        Root.AssemblyLinearVelocity = fakeVel
+        Root.AssemblyAngularVelocity = fakeVel
+
+        -- Random Position Offset
+        Root.CFrame = Root.CFrame + Vector3.new(
+            math.random(-3,3),
+            math.random(-2,2),
+            math.random(-3,3)
+        )
+
+        -- Sky AntiLock
+        Root.CFrame = Root.CFrame * CFrame.Angles(
+            math.rad(math.random(-180,180)),
+            math.rad(math.random(-180,180)),
+            0
+        )
+
         RunService.RenderStepped:Wait()
-        RootPart.Velocity = OldVec
-        RootPart.AssemblyLinearVelocity = LineraVelcoity
-        RootPart.AssemblyAngularVelocity = Angular
+
+        Root.Velocity = oldVel
+        Root.AssemblyLinearVelocity = oldLin
+        Root.AssemblyAngularVelocity = oldAng
     end
 end)
 
