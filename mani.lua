@@ -607,8 +607,6 @@ RunService.Heartbeat:Connect(function()
     end)
 end
 
-Main()
-
 local Net = require(ReplicatedStorage.Modules.Core.Net)
 local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
 
