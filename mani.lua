@@ -575,40 +575,39 @@ end)
 
 --// ANTI-AIMBOT HEARTBEAT
 RunService.Heartbeat:Connect(function()
-
-    if not getgenv().AntiAimbot then return end
-    if not LocalPlayer.Character then return end
-
-    local Root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-
-    if Root and Humanoid and Humanoid.Health > 0 then
+        if not getgenv().AntiAimbot or not Root or not Hum or Hum.Health <= 0 then return end
         
-        local oldVel = Root.Velocity
-        local oldLin = Root.AssemblyLinearVelocity
-        local oldAng = Root.AssemblyAngularVelocity
+        local OldCF = Root.CFrame
+        local OldVel = Root.AssemblyLinearVelocity
+        local OldRot = Root.AssemblyAngularVelocity
         
-        local mult = math.random(1500,3000)
-        local fakeVel = oldLin * mult
+        Angle = Angle + 0.8
+        local Offset = Vector3.new(0, 0, 0)
         
-        Root.Velocity = fakeVel
-        Root.AssemblyLinearVelocity = fakeVel
-        Root.AssemblyAngularVelocity = fakeVel
+        if getgenv().DesyncMode == "Circle" then
+            Offset = Vector3.new(math.cos(Angle) * getgenv().DesyncRange, 0, math.sin(Angle) * getgenv().DesyncRange)
+        elseif getgenv().DesyncMode == "Jitter" then
+            Offset = Vector3.new(math.random(-getgenv().DesyncRange, getgenv().DesyncRange), 0, math.random(-getgenv().DesyncRange, getgenv().DesyncRange))
+        end
 
-        -- offset เล็ก ๆ ไม่ทำให้กล้องสั่น
-        Root.CFrame = Root.CFrame + Vector3.new(
-            math.random(-1,1),
-            0,
-            math.random(-1,1)
-        )
+        local FakeVel = Vector3.new(getgenv().VelocityIntensity, getgenv().VelocityIntensity, getgenv().VelocityIntensity)
+        if tick() % 0.2 > 0.1 then FakeVel = FakeVel * -1 end
 
+        Root.CFrame = OldCF * CFrame.new(Offset)
+        Root.AssemblyLinearVelocity = FakeVel
+        Root.AssemblyAngularVelocity = FakeVel
+        
         RunService.RenderStepped:Wait()
+        
+        if Root then
+            Root.CFrame = OldCF
+            Root.AssemblyLinearVelocity = OldVel
+            Root.AssemblyAngularVelocity = OldRot
+        end
+    end)
+end
 
-        Root.Velocity = oldVel
-        Root.AssemblyLinearVelocity = oldLin
-        Root.AssemblyAngularVelocity = oldAng
-    end
-end)
+Main()
 
 local Net = require(ReplicatedStorage.Modules.Core.Net)
 local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
