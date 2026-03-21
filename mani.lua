@@ -254,14 +254,14 @@ oldFire = hookfunction(send.FireServer, function(self, ...)
     if SilentAimEnabled and IsHoldingAllowedGun(args) then
         local target = GetClosestTarget()
         if target and target.Character and target.Character:FindFirstChild("Head") then
-            local hitPart = target.Character.Head
-            local aimPos = PredictPosition(hitPart)
-            
-            args[4] = CFrame.new(1/0, 1/0, 1/0) 
+            local targetHead = target.Character.Head
+            local aimPos = PredictPosition(targetHead)
+
+            args[4] = CFrame.new(1/0,1/0,1/0,0/0,0/0,0/0,0/0,0/0,0/0,0/0,0/0,0/0)
             args[5] = {
                 [1] = {
                     [1] = {
-                        ["Instance"] = hitPart,
+                        ["Instance"] = targetHead,
                         ["Position"] = aimPos
                     }
                 }
