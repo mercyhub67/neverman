@@ -568,30 +568,35 @@ end)
 
 --// ANTI-AIMBOT HEARTBEAT
 RunService.Heartbeat:Connect(function()
-    local Character = Client.Character
-    local Root = Character and Character:FindFirstChild("HumanoidRootPart")
-    local Hum = Character and Character:FindFirstChild("Humanoid")
+    if getgenv().AntiAimbot and RootPart and Humanoid.Health > 0 then
 
-    if getgenv().AntiAimbot and Root and Hum and Hum.Health > 0 then 
-        local OldCF, OldVel, OldRot = Root.CFrame, Root.AssemblyLinearVelocity, Root.AssemblyAngularVelocity
-        local T = tick() * 10 -- ใช้เวลาแทน Angle (ปรับเลข 10 เพื่อคุมความเร็วการหมุน)
-        
-        local Offset = (getgenv().DesyncMode == "Circle" and Vector3.new(math.cos(T) * getgenv().DesyncRange, 0, math.sin(T) * getgenv().DesyncRange)) or (getgenv().DesyncMode == "Jitter" and Vector3.new(math.random(-getgenv().DesyncRange, getgenv().DesyncRange), 0, math.random(-getgenv().DesyncRange, getgenv().DesyncRange))) or Vector3.new(0,0,0)
+        local OldVec = RootPart.Velocity
+        local Linear = RootPart.AssemblyLinearVelocity
+        local Angular = RootPart.AssemblyAngularVelocity
 
-        local FakeVel = Vector3.new(getgenv().VelocityIntensity, getgenv().VelocityIntensity, getgenv().VelocityIntensity)
-        if tick() % 0.2 > 0.1 then FakeVel = FakeVel * -1 end
+        -- ตัวคูณแบบเดิม
+        local x,y,z = math.random(1000,2500),math.random(1000,2500),math.random(1000,2500)
 
-        Root.CFrame = OldCF * CFrame.new(Offset)
-        Root.AssemblyLinearVelocity = FakeVel
-        Root.AssemblyAngularVelocity = FakeVel
-        
+        local LandVec = Vector3.new(
+            Linear.X * x,
+            Linear.Y * y,
+            Linear.Z * z
+        )
+
+        -- Velocity Desync
+        RootPart.Velocity = LandVec
+        RootPart.AssemblyLinearVelocity = LandVec
+
+        -- Jitter
+        local jitter = math.random(-20,20)
+        RootPart.AssemblyAngularVelocity = Vector3.new(0, jitter, 0)
+
         RunService.RenderStepped:Wait()
-        
-        if Root then
-            Root.CFrame = OldCF
-            Root.AssemblyLinearVelocity = OldVel
-            Root.AssemblyAngularVelocity = OldRot
-        end
+
+        -- Restore ค่าเดิม
+        RootPart.Velocity = OldVec
+        RootPart.AssemblyLinearVelocity = Linear
+        RootPart.AssemblyAngularVelocity = Angular
     end
 end)
 
