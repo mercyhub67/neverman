@@ -574,8 +574,7 @@ RunService.Heartbeat:Connect(function()
         local Linear = RootPart.AssemblyLinearVelocity
         local Angular = RootPart.AssemblyAngularVelocity
 
-        -- ตัวคูณแบบเดิม
-        local x,y,z = math.random(1000,2500),math.random(1000,2500),math.random(1000,2500)
+        local x,y,z = math.random(1200,3500),math.random(1200,3500),math.random(1000,2500)
 
         local LandVec = Vector3.new(
             Linear.X * x,
@@ -587,9 +586,12 @@ RunService.Heartbeat:Connect(function()
         RootPart.Velocity = LandVec
         RootPart.AssemblyLinearVelocity = LandVec
 
-        -- Jitter
-        local jitter = math.random(-20,20)
-        RootPart.AssemblyAngularVelocity = Vector3.new(0, jitter, 0)
+        -- Jitter (XYZ)
+        RootPart.AssemblyAngularVelocity = Vector3.new(
+            math.random(-20, 20),
+            math.random(-20, 20),
+            math.random(-20, 20)
+        )
 
         RunService.RenderStepped:Wait()
 
