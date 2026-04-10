@@ -974,36 +974,53 @@ MainTab:Toggle(
     }
 )
 
-local Net = require(ReplicatedStorage.Modules.Core.Net)
-local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
-
-if not getgenv().Bypassed then
-    local func = debug.getupvalue(Net.get, 2)
-    debug.setconstant(func, 3, '__Bypass')
-    debug.setconstant(func, 4, '__Bypass')
-    getgenv().Bypassed = true
-end
-
-repeat task.wait() until getgenv().Bypassed
-
-RunService.Heartbeat:Connect(function()
-    Net.send("set_sprinting_1", true)
-end)
-
-local consume_stamina = SprintModule.consume_stamina
-local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
-local __InfiniteStamina = SprintBar.update
-
-SprintBar.update = function(...)
-    if getgenv().InfiniteStamina then
-        return __InfiniteStamina(function()
-            return 0.9  -- ← เปลี่ยนตรงนี้ตามที่ต้องการ (0.9 = เต็มเกือบหมด)
-        end)
-    end
-    return __InfiniteStamina(...)
-end
-
 getgenv().InfiniteStamina = false
+local __HookDone = false
+
+VisualsTab:Toggle({
+    Title = "Infinite Stamina",
+    Default = false,
+    Callback = function(v)
+        getgenv().InfiniteStamina = v
+
+        if v and not __HookDone then
+            __HookDone = true
+
+            local Net = require(ReplicatedStorage.Modules.Core.Net)
+            local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+
+            if not getgenv().Bypassed then
+                local func = debug.getupvalue(Net.get, 2)
+                debug.setconstant(func, 3, '__Bypass')
+                debug.setconstant(func, 4, '__Bypass')
+                getgenv().Bypassed = true
+            end
+
+            task.spawn(function()
+                repeat task.wait() until getgenv().Bypassed
+
+                RunService.Heartbeat:Connect(function()
+                    if getgenv().InfiniteStamina then
+                        Net.send("set_sprinting_1", true)
+                    end
+                end)
+
+                local consume_stamina = SprintModule.consume_stamina
+                local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
+                local __InfiniteStamina = SprintBar.update
+
+                SprintBar.update = function(...)
+                    if getgenv().InfiniteStamina then
+                        return __InfiniteStamina(function()
+                            return 0.9
+                        end)
+                    end
+                    return __InfiniteStamina(...)
+                end
+            end)
+        end
+    end
+})
 
 
 MainTab:Section(
