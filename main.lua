@@ -974,20 +974,36 @@ MainTab:Toggle(
     }
 )
 
--- เก็บฟังก์ชันเดิมของ SprintBar.update ไว้
-local OldUpdate = SprintBar.update
+local Net = require(ReplicatedStorage.Modules.Core.Net)
+local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
 
--- เขียนฟังก์ชันใหม่แทนที่
-SprintBar.update = function(...)
-    if EnabledInfiniteStamina then
-        -- ถ้าเปิดโหมด Infinite Stamina ให้คืนค่าเต็ม (1)
-        return 0.9
-    else
-        -- ถ้าปิด ให้ทำงานตามปกติ
-        return OldUpdate(...)
-    end
+if not getgenv().Bypassed then
+    local func = debug.getupvalue(Net.get, 2)
+    debug.setconstant(func, 3, '__Bypass')
+    debug.setconstant(func, 4, '__Bypass')
+    getgenv().Bypassed = true
 end
 
+repeat task.wait() until getgenv().Bypassed
+
+RunService.Heartbeat:Connect(function()
+    Net.send("set_sprinting_1", true)
+end)
+
+local consume_stamina = SprintModule.consume_stamina
+local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
+local __InfiniteStamina = SprintBar.update
+
+SprintBar.update = function(...)
+    if getgenv().InfiniteStamina then
+        return __InfiniteStamina(function()
+            return 0.9  -- ← เปลี่ยนตรงนี้ตามที่ต้องการ (0.9 = เต็มเกือบหมด)
+        end)
+    end
+    return __InfiniteStamina(...)
+end
+
+getgenv().InfiniteStamina = false
 
 
 MainTab:Section(
